@@ -1,0 +1,24 @@
+# Protects you during voluntary disruptions (node drain for patching,
+# `kubectl drain`, cluster-autoscaler, etc.) - NOT involuntary crashes.
+# Guarantees at least 1 pod of each tier stays up while a node is drained.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: demolabs-backend-pdb
+  namespace: demolabs
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: demolabs-backend
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: demolabs-frontend-pdb
+  namespace: demolabs
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: demolabs-frontend

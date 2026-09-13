@@ -1,0 +1,35 @@
+# Static PV backed by a hostPath on one of the kubeadm worker nodes.
+# In a real AWS setup you'd normally use the ebs-csi StorageClass instead of
+# hostPath - hostPath is used here so this stack is self-contained and
+# runnable on any bare kubeadm cluster without a cloud provider plugin.
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: demolabs-postgres-pv
+  labels:
+    app: demolabs-postgres
+spec:
+  capacity:
+    storage: 2Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: demolabs-local
+  hostPath:
+    path: /mnt/data/demolabs-postgres
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: demolabs-postgres-pvc
+  namespace: demolabs
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: demolabs-local
+  resources:
+    requests:
+      storage: 2Gi
+  selector:
+    matchLabels:
+      app: demolabs-postgres

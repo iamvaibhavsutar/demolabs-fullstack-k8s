@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demolabs-frontend
+  namespace: demolabs
+  labels:
+    app: demolabs-frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: demolabs-frontend
+  template:
+    metadata:
+      labels:
+        app: demolabs-frontend
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101   # nginx alpine's built-in "nginx" uid
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: frontend
+          image: <YOUR_REGISTRY>/demolabs-frontend:1.0.0
+          ports:
+            - containerPort: 8080
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 15

@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: demolabs-postgres-svc
+  namespace: demolabs
+spec:
+  selector:
+    app: demolabs-postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
+  type: ClusterIP   # DB never needs to leave the cluster

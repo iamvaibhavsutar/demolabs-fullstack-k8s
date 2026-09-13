@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: demolabs
+  labels:
+    # Pod Security Admission (replaces the deprecated PodSecurityPolicy API,
+    # removed in k8s 1.25+; your cluster is 1.31.14 so PSP itself does not exist).
+    # "restricted" = no root, no privilege escalation, drop all capabilities, etc.
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted

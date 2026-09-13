@@ -1,0 +1,137 @@
+# Default-deny for the namespace, then explicit allow rules per hop.
+# This is what "nodepolicy" usually means in practice on a real cluster -
+# NetworkPolicy objects, enforced by the CNI (Calico, in your kubeadm cluster).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: demolabs
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+# Ingress controller -> frontend
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-to-frontend
+  namespace: demolabs
+spec:
+  podSelector:
+    matchLabels:
+      app: demolabs-frontend
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 8080
+---
+# frontend -> backend
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-frontend-to-backend
+  namespace: demolabs
+spec:
+  podSelector:
+    matchLabels:
+      app: demolabs-backend
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+              matchLabels:
+                app: demolabs-frontend
+      ports:
+        - protocol: TCP
+          port: 8080
+---
+# backend -> postgres
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-backend-to-db
+  namespace: demolabs
+spec:
+  podSelector:
+    matchLabels:
+      app: demolabs-postgres
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+              matchLabels:
+                app: demolabs-backend
+      ports:
+        - protocol: TCP
+          port: 5432
+---
+# Egress: allow DNS resolution + the specific in-namespace hops above for
+# frontend and backend pods (default-deny-all above blocks egress too, so
+# without this nothing - not even DNS - would resolve).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns-egress
+  namespace: demolabs
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-frontend-egress-to-backend
+  namespace: demolabs
+spec:
+  podSelector:
+    matchLabels:
+      app: demolabs-frontend
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: demolabs-backend
+      ports:
+        - protocol: TCP
+          port: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-backend-egress-to-db
+  namespace: demolabs
+spec:
+  podSelector:
+    matchLabels:
+      app: demolabs-backend
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: demolabs-postgres
+      ports:
+        - protocol: TCP
+          port: 5432

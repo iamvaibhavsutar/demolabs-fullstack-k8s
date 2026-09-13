@@ -1,0 +1,93 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demolabs-postgres
+  namespace: demolabs
+  labels:
+    app: demolabs-postgres
+spec:
+  replicas: 1   # StatefulSet would be "more correct" for a real DB, but a single
+                # Deployment + RWO PVC keeps this demo simple and still gives you
+                # a realistic PV/PVC binding + probe story to troubleshoot.
+  strategy:
+    type: Recreate   # required with RWO volumes - avoids two pods mounting the same PVC
+  selector:
+    matchLabels:
+      app: demolabs-postgres
+  template:
+    metadata:
+      labels:
+        app: demolabs-postgres
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - containerPort: 5432
+          envFrom:
+            - configMapRef:
+                name: demolabs-db-config
+          env:
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: demolabs-db-secret
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: demolabs-db-secret
+                  key: POSTGRES_PASSWORD
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          volumeMounts:
+            - name: postgres-storage
+              mountPath: /var/lib/postgresql/data
+            - name: init-script
+              mountPath: /docker-entrypoint-initdb.d
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "postgres", "-d", "demolabsdb"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "postgres", "-d", "demolabsdb"]
+            initialDelaySeconds: 15
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+          startupProbe:
+            # Gives Postgres up to 60s (12 x 5s) to initialize a fresh PVC
+            # before liveness starts counting failures - stops k8s from
+            # killing the pod mid first-time-init.
+            exec:
+              command: ["pg_isready", "-U", "postgres", "-d", "demolabsdb"]
+            periodSeconds: 5
+            failureThreshold: 12
+      volumes:
+        - name: postgres-storage
+          persistentVolumeClaim:
+            claimName: demolabs-postgres-pvc
+        - name: init-script
+          configMap:
+            name: demolabs-db-initsql

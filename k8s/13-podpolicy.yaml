@@ -1,0 +1,32 @@
+# "PodSecurityPolicy" (PSP) was removed from Kubernetes in 1.25 - your cluster
+# is 1.31.14 so the PSP API does not exist here at all. Its replacement is:
+#   1) Pod Security Admission (PSA) - built into the API server, enabled via
+#      the namespace labels already set in 00-namespace.yaml
+#      (pod-security.kubernetes.io/enforce: restricted). That's the mandatory,
+#      cluster-native equivalent and is what's actually enforcing "no root,
+#      no privileged containers" on this namespace right now.
+#   2) An admission controller like Kyverno/OPA Gatekeeper for anything more
+#      custom than PSA's three fixed levels (privileged/baseline/restricted).
+#      Example Kyverno ClusterPolicy below - install Kyverno separately if you
+#      want this layer too; it's illustrative, not required for the demo to run.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: demolabs-disallow-privileged
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: no-privileged-containers
+      match:
+        any:
+          - resources:
+              kinds: ["Pod"]
+              namespaces: ["demolabs"]
+      validate:
+        message: "Privileged containers are not allowed in demolabs"
+        pattern:
+          spec:
+            containers:
+              - securityContext:
+                  privileged: "false"
