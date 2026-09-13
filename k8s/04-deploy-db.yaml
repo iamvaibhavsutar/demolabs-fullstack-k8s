@@ -20,7 +20,7 @@ spec:
         app: demolabs-postgres
     spec:
       securityContext:
-        runAsNonRoot: true
+        runAsNonRoot: false
         runAsUser: 999
         fsGroup: 999
         seccompProfile:
