@@ -16,7 +16,7 @@ spec:
         app: demolabs-backend
     spec:
       securityContext:
-        runAsNonRoot: false
+        runAsNonRoot: true
         runAsUser: 1000
         seccompProfile:
           type: RuntimeDefault
@@ -43,6 +43,7 @@ spec:
                   name: demolabs-db-secret
                   key: POSTGRES_PASSWORD
           securityContext:
+            privileged: false
             allowPrivilegeEscalation: false
             capabilities:
               drop: ["ALL"]

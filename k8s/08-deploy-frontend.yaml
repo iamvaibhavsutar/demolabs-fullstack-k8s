@@ -16,7 +16,7 @@ spec:
         app: demolabs-frontend
     spec:
       securityContext:
-        runAsNonRoot: false
+        runAsNonRoot: true
         runAsUser: 101   # nginx alpine's built-in "nginx" uid
         seccompProfile:
           type: RuntimeDefault
@@ -28,6 +28,7 @@ spec:
           ports:
             - containerPort: 8080
           securityContext:
+            privileged: false
             allowPrivilegeEscalation: false
             capabilities:
               drop: ["ALL"]
