@@ -10,7 +10,7 @@ COPY . .
 RUN npm run build
 
 # ---------- Stage 2: serve with nginx ----------
-FROM nginx:1.27-alpine
+FROM nginxinc/nginx-unprivileged:stable-alpine
 COPY --from=build /build/build /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
