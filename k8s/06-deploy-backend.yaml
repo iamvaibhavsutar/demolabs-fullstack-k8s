@@ -16,7 +16,7 @@ spec:
         app: demolabs-backend
     spec:
       securityContext:
-        runAsNonRoot: true
+        runAsNonRoot: false
         runAsUser: 1000
         seccompProfile:
           type: RuntimeDefault
