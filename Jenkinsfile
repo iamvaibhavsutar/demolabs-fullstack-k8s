@@ -16,8 +16,22 @@ podTemplate(
     containerTemplate(name: 'node',   image: 'node:20-alpine',               command: 'sleep', args: '99d'),
     containerTemplate(name: 'kaniko', image: 'gcr.io/kaniko-project/executor:debug', command: 'sleep', args: '9999999'),
     containerTemplate(name: 'git',    image: 'alpine/git:2.45.2',            command: 'sleep', args: '99d'),
-    containerTemplate( name: 'docker', image: 'docker:27-cli', command: 'sleep', args: '99d' ), 
-    containerTemplate( name: 'dind', image: 'docker:27-dind', privileged: true, command: 'dockerd-entrypoint.sh', args: '' )
+	containerTemplate(
+  name: 'docker',
+  image: 'docker:27-cli',
+  command: 'sleep',
+  args: '99d'
+),
+
+containerTemplate(
+  name: 'dind',
+  image: 'docker:27-dind',
+  privileged: true,
+  envVars: [
+    envVar(key: 'DOCKER_TLS_CERTDIR', value: '')
+  ],
+  command: 'dockerd-entrypoint.sh'
+)
   ],
   volumes: [
     // Docker Hub push creds for Kaniko - a docker/config.json built from a
@@ -54,53 +68,61 @@ podTemplate(
 
 stage('Build & Push Backend Image') {
   container('docker') {
-    withCredentials([
-      usernamePassword(
-        credentialsId: 'dockerhub-creds',
-        usernameVariable: 'DOCKER_USER',
-        passwordVariable: 'DOCKER_PASS'
-      )
+    withEnv([
+      'DOCKER_HOST=tcp://localhost:2375',
+      'DOCKER_TLS_CERTDIR='
     ]) {
-      sh """
-        docker login -u \$DOCKER_USER -p \$DOCKER_PASS
+      withCredentials([
+        usernamePassword(
+          credentialsId: 'dockerhub-creds',
+          usernameVariable: 'DOCKER_USER',
+          passwordVariable: 'DOCKER_PASS'
+        )
+      ]) {
+        sh """
+          echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin
 
-        docker build \
-          -t ${REGISTRY}/demolabs-backend:${IMAGE_TAG} \
-          -t ${REGISTRY}/demolabs-backend:latest \
-          backend
+          docker build \
+            -t ${REGISTRY}/demolabs-backend:${IMAGE_TAG} \
+            -t ${REGISTRY}/demolabs-backend:latest \
+            backend
 
-        docker push ${REGISTRY}/demolabs-backend:${IMAGE_TAG}
-        docker push ${REGISTRY}/demolabs-backend:latest
-      """
+          docker push ${REGISTRY}/demolabs-backend:${IMAGE_TAG}
+          docker push ${REGISTRY}/demolabs-backend:latest
+        """
+      }
     }
   }
 }
 
 stage('Build & Push Frontend Image') {
   container('docker') {
-    withCredentials([
-      usernamePassword(
-        credentialsId: 'dockerhub-creds',
-        usernameVariable: 'DOCKER_USER',
-        passwordVariable: 'DOCKER_PASS'
-      )
+    withEnv([
+      'DOCKER_HOST=tcp://localhost:2375',
+      'DOCKER_TLS_CERTDIR='
     ]) {
-      sh """
-        docker login -u \$DOCKER_USER -p \$DOCKER_PASS
+      withCredentials([
+        usernamePassword(
+          credentialsId: 'dockerhub-creds',
+          usernameVariable: 'DOCKER_USER',
+          passwordVariable: 'DOCKER_PASS'
+        )
+      ]) {
+        sh """
+          echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin
 
-        docker build \
-          -t ${REGISTRY}/demolabs-frontend:${IMAGE_TAG} \
-          -t ${REGISTRY}/demolabs-frontend:latest \
-          frontend
+          docker build \
+            -t ${REGISTRY}/demolabs-frontend:${IMAGE_TAG} \
+            -t ${REGISTRY}/demolabs-frontend:latest \
+            frontend
 
-        docker push ${REGISTRY}/demolabs-frontend:${IMAGE_TAG}
-        docker push ${REGISTRY}/demolabs-frontend:latest
-      """
+          docker push ${REGISTRY}/demolabs-frontend:${IMAGE_TAG}
+          docker push ${REGISTRY}/demolabs-frontend:latest
+        """
+      }
     }
   }
 }
-
-
     stage('Update K8s Manifests & Push (GitOps handoff)') {
       container('git') {
         withCredentials([usernamePassword(credentialsId: 'github-creds', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_TOKEN')]) {
