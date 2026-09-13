@@ -50,37 +50,37 @@ podTemplate(
       }
     }
 
-    stage('Build & Push Backend Image - Kaniko') {
+stage('Build & Push Backend Image - Kaniko') {
   container('kaniko') {
     sh """
-      cp /kaniko/.docker/.dockerconfigjson /kaniko/.docker/config.json
+      export DOCKER_CONFIG=/kaniko/.docker
 
       /kaniko/executor \
-        --docker-config=/kaniko/.docker \
         --context=`pwd`/backend \
         --dockerfile=`pwd`/backend/Dockerfile \
-        --destination=${REGISTRY}/demolabs-backend:${IMAGE_TAG} \
-        --destination=${REGISTRY}/demolabs-backend:latest \
+        --destination=docker.io/vsutardevops/demolabs-backend:${IMAGE_TAG} \
+        --destination=docker.io/vsutardevops/demolabs-backend:latest \
         --cache=true
     """
   }
 }
 
- stage('Build & Push Frontend Image - Kaniko') {
+stage('Build & Push Frontend Image - Kaniko') {
   container('kaniko') {
     sh """
-      cp /kaniko/.docker/.dockerconfigjson /kaniko/.docker/config.json
+      export DOCKER_CONFIG=/kaniko/.docker
 
       /kaniko/executor \
-        --docker-config=/kaniko/.docker \
         --context=`pwd`/frontend \
         --dockerfile=`pwd`/frontend/Dockerfile \
-        --destination=${REGISTRY}/demolabs-frontend:${IMAGE_TAG} \
-        --destination=${REGISTRY}/demolabs-frontend:latest \
+        --destination=docker.io/vsutardevops/demolabs-frontend:${IMAGE_TAG} \
+        --destination=docker.io/vsutardevops/demolabs-frontend:latest \
         --cache=true
     """
   }
 }
+
+
     stage('Update K8s Manifests & Push (GitOps handoff)') {
       container('git') {
         withCredentials([usernamePassword(credentialsId: 'github-creds', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_TOKEN')]) {
