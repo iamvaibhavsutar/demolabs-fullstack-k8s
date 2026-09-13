@@ -127,8 +127,8 @@ stage('Build & Push Frontend Image') {
       container('git') {
         withCredentials([usernamePassword(credentialsId: 'github-creds', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_TOKEN')]) {
           sh """
-            git config user.email 'ci@demolabs.local'
-            git config user.name 'jenkins-ci'
+            git config user.email 'sutarv40@gmail.com'
+            git config user.name 'iamvaibhavsutar'
 
             sed -i "s#${REGISTRY}/demolabs-backend:.*#${REGISTRY}/demolabs-backend:${IMAGE_TAG}#" k8s/06-deploy-backend.yaml
             sed -i "s#${REGISTRY}/demolabs-frontend:.*#${REGISTRY}/demolabs-frontend:${IMAGE_TAG}#" k8s/08-deploy-frontend.yaml
