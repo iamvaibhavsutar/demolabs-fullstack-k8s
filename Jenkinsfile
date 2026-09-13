@@ -14,7 +14,7 @@ podTemplate(
   containers: [
     containerTemplate(name: 'maven',  image: 'maven:3.9-eclipse-temurin-17', command: 'sleep', args: '99d'),
     containerTemplate(name: 'node',   image: 'node:20-alpine',               command: 'sleep', args: '99d'),
-    containerTemplate(name: 'kaniko', image: 'gcr.io/kaniko-project/executor:debug', command: 'sleep', args: '99d'),
+    containerTemplate(name: 'kaniko', image: 'gcr.io/kaniko-project/executor:debug', command: 'sleep', args: '9999999'),
     containerTemplate(name: 'git',    image: 'alpine/git:2.45.2',            command: 'sleep', args: '99d'),
   ],
   volumes: [
