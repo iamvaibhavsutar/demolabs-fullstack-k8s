@@ -24,7 +24,7 @@ spec:
         - name: frontend
           # Tag here is rewritten by the Jenkinsfile's "Update K8s Manifests" stage
           # on every build - Argo CD then syncs whatever tag is committed.
-          image: docker.io/vsutardevops/demolabs-frontend:74530c1
+          image: docker.io/vsutardevops/demolabs-frontend:9121d31
           ports:
             - containerPort: 8080
           securityContext:
