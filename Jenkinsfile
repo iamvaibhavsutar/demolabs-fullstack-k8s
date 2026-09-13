@@ -123,23 +123,35 @@ stage('Build & Push Frontend Image') {
     }
   }
 }
-    stage('Update K8s Manifests & Push (GitOps handoff)') {
-      container('git') {
-        withCredentials([usernamePassword(credentialsId: 'github-creds', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_TOKEN')]) {
-          sh """
-            git config user.email 'sutarv40@gmail.com'
-            git config user.name 'iamvaibhavsutar'
 
-            sed -i "s#${REGISTRY}/demolabs-backend:.*#${REGISTRY}/demolabs-backend:${IMAGE_TAG}#" k8s/06-deploy-backend.yaml
-            sed -i "s#${REGISTRY}/demolabs-frontend:.*#${REGISTRY}/demolabs-frontend:${IMAGE_TAG}#" k8s/08-deploy-frontend.yaml
+stage('Update K8s Manifests & Push (GitOps handoff)') {
+  withCredentials([
+    usernamePassword(
+      credentialsId: 'github-creds',
+      usernameVariable: 'GIT_USER',
+      passwordVariable: 'GIT_TOKEN'
+    )
+  ]) {
+    sh """
+      pwd
+      git status
 
-            git add k8s/06-deploy-backend.yaml k8s/08-deploy-frontend.yaml
-            git commit -m "ci: bump demolabs images to ${IMAGE_TAG} [skip ci]"
-            git push https://${GIT_USER}:${GIT_TOKEN}@${GIT_REPO} HEAD:main
-          """
-        }
-      }
-    }
+      git config user.email 'sutarv40@gmail.com'
+      git config user.name 'iamvaibhavsutar'
+
+      sed -i "s#${REGISTRY}/demolabs-backend:.*#${REGISTRY}/demolabs-backend:${IMAGE_TAG}#" k8s/06-deploy-backend.yaml
+
+      sed -i "s#${REGISTRY}/demolabs-frontend:.*#${REGISTRY}/demolabs-frontend:${IMAGE_TAG}#" k8s/08-deploy-frontend.yaml
+
+      git add k8s/06-deploy-backend.yaml k8s/08-deploy-frontend.yaml
+
+      git commit -m "ci: bump demolabs images to ${IMAGE_TAG} [skip ci]" || true
+
+      git push https://\$GIT_USER:\$GIT_TOKEN@github.com/iamvaibhavsutar/demolabs-fullstack-k8s.git HEAD:main
+    """
+  }
+}
+
 
     stage('Note') {
       // Deliberately no kubectl/argocd CLI stage here - Argo CD's own
