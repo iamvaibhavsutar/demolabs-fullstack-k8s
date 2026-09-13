@@ -8,7 +8,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-    - host: demolabs.lyra.local
+    - host: demolabs.local
       http:
         paths:
           - path: /

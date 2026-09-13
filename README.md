@@ -5,7 +5,8 @@ A minimal but "prod-shaped" 3-tier app — **React (npm) frontend → Spring Boo
 **Tailscale** instead of a public LB (matches how you already reach this cluster: fixed 100.x overlay
 IPs on your laptop + all EC2 nodes, since dynamic home/laptop IPs broke SG-based SSH/kubectl access).
 
-Suggested git repo name: **`demolabs-fullstack-k8s`**
+Repo: https://github.com/iamvaibhavsutar/demolabs-fullstack-k8s.git
+Registry: Docker Hub, `vsutardevops/demolabs-backend` / `vsutardevops/demolabs-frontend`
 
 ```
 demolabs-fullstack-k8s/
@@ -69,7 +70,7 @@ and keeps build tooling out of the attack surface. Both run as **non-root** — 
 | `04/05` | Deployment + Service | Postgres — `Recreate` strategy (RWO volume can't be double-mounted), `pg_isready` probes |
 | `06/07` | Deployment + Service | Backend — 2 replicas, Actuator-based probes, resource requests (needed for HPA) |
 | `08/09` | Deployment + Service | Frontend — 2 replicas, `/healthz` probe (doesn't depend on backend being up) |
-| `10-ingress.yaml` | Ingress | Routes `demolabs.lyra.local` → frontend Service |
+| `10-ingress.yaml` | Ingress | Routes `demolabs.local` → frontend Service |
 | `11-hpa.yaml` | HPA ×2 | Scales backend 2→6, frontend 2→4 on CPU% |
 | `12-networkpolicy.yaml` | NetworkPolicy | Default-deny + explicit allow: ingress→frontend→backend→db, plus DNS egress |
 | `13-podpolicy.yaml` | (see note) | PSP replacement — PSA label (mandatory, already active) + optional Kyverno example |
@@ -90,9 +91,9 @@ before first deploy, or switch it to an EBS-CSI StorageClass if you've since ins
   required for this stack to run.
 
 **Secrets note:** `Secret` objects are base64-**encoded**, not encrypted — anyone with `get secrets`
-RBAC in `demolabs` can read the password in plaintext. Fine for this demo; for real prod at Lyra,
-route this through Sealed Secrets or your Vault/SOPS setup instead of committing plaintext-decodable
-values, and don't commit `01-secret-db.yaml` to git as-is.
+RBAC in `demolabs` can read the password in plaintext. Fine for this learning project; for anything
+closer to real production, route this through Sealed Secrets or SOPS instead of committing
+plaintext-decodable values, and don't commit `01-secret-db.yaml` to a public repo as-is.
 
 ---
 
@@ -101,16 +102,17 @@ values, and don't commit `01-secret-db.yaml` to git as-is.
 ```bash
 # Backend
 cd backend
-docker build -t <YOUR_REGISTRY>/demolabs-backend:1.0.0 .
-docker push <YOUR_REGISTRY>/demolabs-backend:1.0.0
+docker build -t vsutardevops/demolabs-backend:1.0.0 .
+docker push vsutardevops/demolabs-backend:1.0.0
 
 # Frontend
 cd ../frontend
-docker build -t <YOUR_REGISTRY>/demolabs-frontend:1.0.0 .
-docker push <YOUR_REGISTRY>/demolabs-frontend:1.0.0
+docker build -t vsutardevops/demolabs-frontend:1.0.0 .
+docker push vsutardevops/demolabs-frontend:1.0.0
 ```
-Replace `<YOUR_REGISTRY>` in `k8s/06-deploy-backend.yaml` and `k8s/08-deploy-frontend.yaml` with your
-Harbor path (e.g. `harbor.lyra.local/demolabs/demolabs-backend:1.0.0`), then:
+The image paths in `k8s/06-deploy-backend.yaml` and `k8s/08-deploy-frontend.yaml` already point at
+`docker.io/vsutardevops/...` — bump the tag there (or let the Jenkinsfile do it, see
+`SETUP-CICD.md`) whenever you push a new version, then:
 
 ```bash
 mkdir -p /mnt/data/demolabs-postgres   # on the node the DB pod will land on
@@ -122,7 +124,7 @@ mkdir -p /mnt/data/demolabs-postgres   # on the node the DB pod will land on
 ## 3. Access URL — over Tailscale, not a public LB
 
 You don't have a public-facing LB/domain here — access goes over the Tailscale mesh (fixed 100.x
-overlay IPs on your laptop and every EC2 node). Two ways to reach the app, pick one:
+overlay IPs on your laptop and every node in your kubeadm cluster). Two ways to reach the app, pick one:
 
 **A. Ingress-nginx as NodePort (simplest)**
 ```bash
@@ -130,13 +132,13 @@ kubectl -n ingress-nginx get svc ingress-nginx-controller
 # note the NodePort mapped to 80, e.g. 31780
 ```
 On your laptop, add to `/etc/hosts` using the **Tailscale IP of whichever node runs the ingress
-controller** (e.g. `kube-jenkins`, ip-10-0-1-21 → its 100.x address, `tailscale ip -4` on that node):
+controller** (run `tailscale ip -4` on that node to get it):
 ```
-100.x.x.x   demolabs.lyra.local
+100.x.x.x   demolabs.local
 ```
 Then browse to:
 ```
-http://demolabs.lyra.local:31780/
+http://demolabs.local:31780/
 ```
 
 **B. Skip Ingress entirely, NodePort the frontend Service directly**
@@ -326,5 +328,5 @@ kubectl -n demolabs apply -f k8s/06-deploy-backend.yaml
 ```bash
 kubectl -n demolabs get pods,svc,hpa,pdb,networkpolicy
 kubectl -n demolabs exec deploy/demolabs-frontend -- curl -s http://demolabs-backend-svc:8080/api/ping
-curl -s http://demolabs.lyra.local:<nodeport>/api/tasks
+curl -s http://demolabs.local:<nodeport>/api/tasks
 ```

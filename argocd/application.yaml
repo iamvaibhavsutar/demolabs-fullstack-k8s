@@ -1,0 +1,32 @@
+# This is what actually turns "kubectl apply" into GitOps: Argo CD watches
+# this Application object, not your Jenkins job. Jenkins never touches the
+# cluster directly - it only pushes a new image tag into git; Argo CD is the
+# only thing with write access to the demolabs namespace.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: demolabs
+  namespace: argocd          # Argo CD's own namespace (control plane), NOT demolabs
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/iamvaibhavsutar/demolabs-fullstack-k8s.git
+    targetRevision: main
+    path: k8s                # only this folder is synced - README/backend/frontend source ignored
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: demolabs
+  syncPolicy:
+    automated:
+      prune: true             # deletes k8s objects removed from git
+      selfHeal: true           # reverts manual kubectl edits back to what git says
+    syncOptions:
+      - CreateNamespace=false  # namespace already created by 00-namespace.yaml, applied in-order
+    retry:
+      limit: 3
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 1m
